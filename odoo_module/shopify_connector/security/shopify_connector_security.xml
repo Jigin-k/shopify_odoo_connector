@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_shopify_connector_user" model="res.groups">
+        <field name="name">Shopify Connector User</field>
+        <field name="comment">
+            Assign this group only to the dedicated technical user whose
+            API key the Shopify app uses. It grants the minimum
+            ir.model.access needed to reach the shopify_sync_* methods;
+            the methods themselves use sudo() for the actual writes (see
+            the module README for why), so this group's real purpose is
+            limiting which Odoo login can obtain a Shopify API key at all,
+            not gating individual field access.
+        </field>
+    </record>
+</odoo>

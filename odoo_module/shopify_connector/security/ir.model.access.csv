@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_shopify_sync_log_user,shopify.sync.log.user,model_shopify_sync_log,group_shopify_connector_user,1,0,0,0
+access_shopify_sync_log_manager,shopify.sync.log.manager,model_shopify_sync_log,base.group_system,1,1,1,1
+access_product_template_shopify,product.template.shopify.connector,product.model_product_template,group_shopify_connector_user,1,1,1,0
+access_product_product_shopify,product.product.shopify.connector,product.model_product_product,group_shopify_connector_user,1,1,1,0
+access_res_partner_shopify,res.partner.shopify.connector,base.model_res_partner,group_shopify_connector_user,1,1,1,0
+access_sale_order_shopify,sale.order.shopify.connector,sale.model_sale_order,group_shopify_connector_user,1,1,1,0
+access_sale_order_line_shopify,sale.order.line.shopify.connector,sale.model_sale_order_line,group_shopify_connector_user,1,1,1,0
+access_stock_quant_shopify,stock.quant.shopify.connector,stock.model_stock_quant,group_shopify_connector_user,1,0,0,0
+access_stock_warehouse_shopify,stock.warehouse.shopify.connector,stock.model_stock_warehouse,group_shopify_connector_user,1,0,0,0
