@@ -1,9 +1,24 @@
 import prisma from "../../db.server";
 import { archiveCustomerInOdoo, syncCustomerToOdoo } from "../odoo/customers.server";
 import { syncOrderToOdoo } from "../odoo/orders.server";
-import { archiveProductInOdoo, syncProductToOdoo } from "../odoo/products.server";
+import {
+  archiveProductInOdoo,
+  fetchImageAsBase64,
+  syncProductToOdoo,
+  type ShopifyVariantForOdoo,
+} from "../odoo/products.server";
 import { syncRefundToOdoo } from "../odoo/refunds.server";
 import { getOdooClient, numericShopifyId } from "../odoo/sync.server";
+
+// REST payload weight units ("g", "kg", "oz", "lb") - same conversion
+// need as the GraphQL path (app.products.tsx), just REST's own unit
+// strings instead of GraphQL's enum values.
+const REST_WEIGHT_TO_KG: Record<string, number> = {
+  g: 0.001,
+  kg: 1,
+  oz: 0.0283495,
+  lb: 0.453592,
+};
 
 type WebhookPayload = Record<string, unknown>;
 
@@ -78,14 +93,39 @@ export async function processShopifyWebhook(
   }
 
   if (["PRODUCTS_CREATE", "PRODUCTS_UPDATE"].includes(normalizedTopic)) {
-    const variants = Array.isArray(payload.variants) ? payload.variants : [];
-    const firstVariant = object(variants[0]) ?? {};
+    const rawVariants = Array.isArray(payload.variants) ? payload.variants : [];
+    const firstVariant = object(rawVariants[0]) ?? {};
+    const variants: ShopifyVariantForOdoo[] = rawVariants.map((value) => {
+      const variant = object(value) ?? {};
+      const weightUnit = text(variant.weight_unit) || "kg";
+      const weight = Number(variant.weight);
+      return {
+        shopifyVariantId: variantGid(variant.id),
+        sku: text(variant.sku),
+        price: text(variant.price) || "0",
+        title: text(variant.title),
+        weight: Number.isFinite(weight) && weight > 0
+          ? weight * (REST_WEIGHT_TO_KG[weightUnit] ?? 1)
+          : null,
+        // REST's product webhook payload doesn't embed per-variant cost
+        // (unlike GraphQL's InventoryItem.unitCost) - would need a
+        // separate InventoryItem lookup per variant, which is a
+        // disproportionate cost for a passive webhook handler. Cost only
+        // syncs via the manual/bulk sync paths in /app/products, which
+        // already fetch it through GraphQL.
+        cost: null,
+      };
+    });
+    const imageUrl = text(object(payload.image)?.src);
+    const imageBase64 = await fetchImageAsBase64(imageUrl);
     return syncProductToOdoo(
       odoo,
       {
         title: text(payload.title) || `Shopify product ${shopifyId}`,
         sku: text(firstVariant.sku),
         price: text(firstVariant.price) || "0",
+        description: text(payload.body_html),
+        imageBase64,
         // REST webhooks give nested resources a bare numeric id, unlike
         // the GraphQL-sourced GIDs the manual /app/products sync uses -
         // normalize to the same gid:// form so both paths tag the same
@@ -96,6 +136,7 @@ export async function processShopifyWebhook(
         // count as "doesn't require shipping".
         requiresShipping: firstVariant.requires_shipping !== false,
         tracked: firstVariant.inventory_management === "shopify",
+        variants,
       },
       { shop, shopifyId },
     );
@@ -123,6 +164,9 @@ export async function processShopifyWebhook(
       financialStatus: text(payload.financial_status),
       cancelledAt: text(payload.cancelled_at),
       taxesIncluded: Boolean(payload.taxes_included),
+      note: text(payload.note),
+      tags: text(payload.tags),
+      fulfillmentStatus: text(payload.fulfillment_status),
       customer: customerPayload ? customer(customerPayload) : null,
       shippingAddress: address(payload.shipping_address),
       lineItems: lines.map((value) => {

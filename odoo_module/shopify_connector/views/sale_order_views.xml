@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_shopify" model="ir.ui.view">
+        <field name="name">sale.order.form.shopify</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <field name="origin" position="after">
+                <field name="shopify_tags" readonly="1"/>
+                <field name="shopify_fulfillment_status" readonly="1"/>
+            </field>
+        </field>
+    </record>
+</odoo>

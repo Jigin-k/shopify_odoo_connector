@@ -14,6 +14,12 @@ export type ShopifyOrderForOdoo = {
   // marked Tax Included, or it'll compute the wrong subtotal/total even
   // with the right tax rate assigned.
   taxesIncluded?: boolean;
+  // Shopify's own order note, tags, and fulfillment status - purely
+  // informational fields carried across for visibility in Odoo, none of
+  // them drive any workflow logic there.
+  note?: string | null;
+  tags?: string | null;
+  fulfillmentStatus?: string | null;
   customer?: ShopifyCustomerForOdoo | null;
   shippingAddress?: ShopifyCustomerForOdoo["address"];
   lineItems: Array<{
@@ -78,7 +84,13 @@ export async function syncOrderToOdoo(
       })),
       financial_status: order.financialStatus || undefined,
       cancelled: Boolean(order.cancelledAt),
-      note: `Shopify order ID: ${order.id}; currency: ${order.currency}`,
+      // Identity (Shopify order ID, currency) is already fully covered
+      // by shopify_id/shopify_shop/origin on the Odoo side - this field
+      // is free to carry the real Shopify order note instead of a
+      // synthetic identity string.
+      note: order.note || undefined,
+      tags: order.tags || undefined,
+      fulfillment_status: order.fulfillmentStatus || undefined,
     },
   });
 

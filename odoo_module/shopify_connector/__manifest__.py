@@ -49,6 +49,7 @@ and API key) and the security model.
         "views/stock_warehouse_views.xml",
         "views/res_company_views.xml",
         "views/account_journal_views.xml",
+        "views/sale_order_views.xml",
     ],
     "installable": True,
     "application": False,

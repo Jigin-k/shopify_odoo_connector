@@ -18,6 +18,8 @@ class SaleOrder(models.Model):
     shopify_id = fields.Char(string="Shopify Order ID", index=True, copy=False)
     shopify_shop = fields.Char(string="Shopify Shop", index=True, copy=False)
     shopify_name = fields.Char(string="Shopify Order #", copy=False)
+    shopify_tags = fields.Char(string="Shopify Tags", copy=False)
+    shopify_fulfillment_status = fields.Char(string="Shopify Fulfillment Status", copy=False)
 
     _shopify_id_shop_uniq = models.Constraint(
         "unique(shopify_shop, shopify_id)",
@@ -264,7 +266,9 @@ class SaleOrder(models.Model):
                         ...],
               "taxes_included": bool,
               "financial_status": "PAID" | ..., "cancelled": bool,
-              "note": str,
+              "note": str,       # Shopify's own order note, if any
+              "tags": str,       # Shopify's comma-separated order tags
+              "fulfillment_status": str,
             }
 
         ``taxes_included`` and each line's ``tax_lines`` come straight
@@ -298,7 +302,13 @@ class SaleOrder(models.Model):
                 "partner_id": partner_result["id"],
                 "client_order_ref": vals.get("name"),
                 "origin": f"Shopify {vals.get('name') or shopify_id}",
+                # Shopify's own order note (merchant/customer-facing),
+                # not an identity marker - client_order_ref/origin/
+                # shopify_id above already cover traceability, so this
+                # field is free to carry the real note content instead.
                 "note": vals.get("note") or False,
+                "shopify_tags": vals.get("tags") or False,
+                "shopify_fulfillment_status": vals.get("fulfillment_status") or False,
                 "order_line": self._shopify_order_line_commands(
                     shopify_shop, order, vals["lines"], bool(vals.get("taxes_included"))
                 ),

@@ -7,7 +7,11 @@ import {
 } from "react-router";
 import prisma from "../db.server";
 import { OdooClient } from "../services/odoo/client.server";
-import { syncProductToOdoo } from "../services/odoo/products.server";
+import {
+  fetchImageAsBase64,
+  syncProductToOdoo,
+  type ShopifyVariantForOdoo,
+} from "../services/odoo/products.server";
 import { authenticate } from "../shopify.server";
 
 type ShopifyVariant = {
@@ -15,7 +19,12 @@ type ShopifyVariant = {
   title: string;
   sku: string | null;
   price: string;
-  inventoryItem: { tracked: boolean; requiresShipping: boolean };
+  inventoryItem: {
+    tracked: boolean;
+    requiresShipping: boolean;
+    unitCost: { amount: string } | null;
+    measurement: { weight: { value: number; unit: string } | null };
+  };
 };
 
 type ShopifyProduct = {
@@ -23,8 +32,38 @@ type ShopifyProduct = {
   title: string;
   handle: string;
   status: string;
+  descriptionHtml: string;
+  featuredMedia: { image: { url: string } } | null;
   variants: { nodes: ShopifyVariant[] };
 };
+
+// Odoo's `weight` field is in kilograms by default - Shopify's
+// InventoryItem.measurement.weight can report in any of these units, so
+// every value needs converting to the same base before Odoo sees it, or
+// a product weighed in ounces would show as if it were kilograms.
+const WEIGHT_TO_KG: Record<string, number> = {
+  GRAMS: 0.001,
+  KILOGRAMS: 1,
+  OUNCES: 0.0283495,
+  POUNDS: 0.453592,
+};
+
+function toOdooVariant(variant: ShopifyVariant): ShopifyVariantForOdoo {
+  const weightInfo = variant.inventoryItem.measurement.weight;
+  const weightKg = weightInfo
+    ? weightInfo.value * (WEIGHT_TO_KG[weightInfo.unit] ?? 1)
+    : null;
+  return {
+    shopifyVariantId: variant.id,
+    sku: variant.sku,
+    price: variant.price,
+    title: variant.title,
+    weight: weightKg,
+    cost: variant.inventoryItem.unitCost
+      ? Number(variant.inventoryItem.unitCost.amount)
+      : null,
+  };
+}
 
 type ProductsQueryResponse = {
   data?: {
@@ -41,6 +80,26 @@ type ProductQueryResponse = {
   errors?: Array<{ message: string }>;
 };
 
+const productDetailFields = `#graphql
+  fragment OdooConnectorProductDetailFields on Product {
+    id title handle status
+    descriptionHtml
+    featuredMedia {
+      ... on MediaImage { image { url } }
+    }
+    variants(first: 100) {
+      nodes {
+        id title sku price
+        inventoryItem {
+          tracked requiresShipping
+          unitCost { amount }
+          measurement { weight { value unit } }
+        }
+      }
+    }
+  }
+`;
+
 async function loadAllProducts(
   admin: Awaited<ReturnType<typeof authenticate.admin>>["admin"],
 ) {
@@ -50,12 +109,10 @@ async function loadAllProducts(
   do {
     const response = await admin.graphql(
       `#graphql
+        ${productDetailFields}
         query OdooConnectorAllProducts($cursor: String) {
           products(first: 100, after: $cursor, sortKey: UPDATED_AT) {
-            nodes {
-              id title handle status
-              variants(first: 1) { nodes { id title sku price inventoryItem { tracked requiresShipping } } }
-            }
+            nodes { ...OdooConnectorProductDetailFields }
             pageInfo { hasNextPage endCursor }
           }
         }
@@ -167,6 +224,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         }
 
         try {
+          const imageBase64 = await fetchImageAsBase64(
+            product.featuredMedia?.image.url,
+          );
           const result = await syncProductToOdoo(
             odoo,
             {
@@ -174,8 +234,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
               sku: variant.sku,
               price: variant.price,
               shopifyVariantId: variant.id,
+              description: product.descriptionHtml,
+              imageBase64,
               requiresShipping: variant.inventoryItem.requiresShipping,
               tracked: variant.inventoryItem.tracked,
+              variants: product.variants.nodes.map(toOdooVariant),
             },
             { shop: session.shop, shopifyId: product.id },
           );
@@ -200,15 +263,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const response = await admin.graphql(
       `#graphql
+        ${productDetailFields}
         query OdooConnectorProduct($id: ID!) {
           product(id: $id) {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              nodes { id title sku price inventoryItem { tracked requiresShipping } }
-            }
+            ...OdooConnectorProductDetailFields
           }
         }
       `,
@@ -229,6 +287,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return { success: false, message: "This product has no variant." };
     }
 
+    const imageBase64 = await fetchImageAsBase64(product.featuredMedia?.image.url);
     const result = await syncProductToOdoo(
       odoo,
       {
@@ -236,8 +295,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         sku: variant.sku,
         price: variant.price,
         shopifyVariantId: variant.id,
+        description: product.descriptionHtml,
+        imageBase64,
         requiresShipping: variant.inventoryItem.requiresShipping,
         tracked: variant.inventoryItem.tracked,
+        variants: product.variants.nodes.map(toOdooVariant),
       },
       { shop: session.shop, shopifyId: product.id },
     );

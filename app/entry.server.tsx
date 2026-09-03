@@ -6,14 +6,16 @@ import { type EntryContext } from "react-router";
 import { isbot } from "isbot";
 import { addDocumentResponseHeaders } from "./shopify.server";
 import { startInventoryPoller } from "./services/inventory-sync.server";
+import { startSyncRetryPoller } from "./services/sync/retry.server";
 
 export const streamTimeout = 5000;
 
 // This module is loaded once per server process (not per-request), so
-// it's the right place to start the one background poller the app
-// runs - see inventory-sync.server.ts for the dev-mode-reload guard
-// that keeps this a no-op on every request after the first.
+// it's the right place to start the app's background pollers - see
+// each one's own file for the dev-mode-reload guard that keeps this a
+// no-op on every request after the first.
 startInventoryPoller();
+startSyncRetryPoller();
 
 export default async function handleRequest(
   request: Request,

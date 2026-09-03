@@ -73,6 +73,12 @@ model SyncEvent {
   error       String?
   createdAt   DateTime  @default(now())
   processedAt DateTime?
+  // How many times the scheduled retry job has attempted this failed
+  // event, and when it last tried - caps automatic retries so a
+  // permanently-broken event (bad payload, deleted Shopify resource)
+  // doesn't get retried forever.
+  retryCount  Int       @default(0)
+  lastRetryAt DateTime?
 
   @@index([shop, createdAt])
   @@index([shop, status])

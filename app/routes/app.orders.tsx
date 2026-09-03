@@ -33,6 +33,8 @@ type OrderDetail = OrderSummary & {
   currencyCode: string;
   cancelledAt: string | null;
   taxesIncluded: boolean;
+  note: string | null;
+  tags: string[];
   customer: {
     id: string;
     firstName: string | null;
@@ -110,6 +112,8 @@ const orderDetailFields = `#graphql
     id name email currencyCode createdAt cancelledAt
     displayFinancialStatus displayFulfillmentStatus
     taxesIncluded
+    note
+    tags
     totalPriceSet { shopMoney { amount currencyCode } }
     customer {
       id firstName lastName
@@ -138,6 +142,9 @@ function orderDetailToOdooInput(order: OrderDetail) {
     financialStatus: order.displayFinancialStatus,
     cancelledAt: order.cancelledAt,
     taxesIncluded: order.taxesIncluded,
+    note: order.note,
+    tags: order.tags.length > 0 ? order.tags.join(", ") : null,
+    fulfillmentStatus: order.displayFulfillmentStatus,
     customer: order.customer
       ? {
           id: order.customer.id,
