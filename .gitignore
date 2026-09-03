@@ -16,6 +16,10 @@ database.sqlite
 .env
 .env.*
 
+# Created on the AWS server per AWS_DEPLOY.md - holds inline secrets,
+# never meant to be committed.
+docker-compose.yml
+
 
 
 

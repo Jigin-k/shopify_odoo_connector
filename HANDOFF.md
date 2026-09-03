@@ -22,15 +22,15 @@ it - nothing here has been guessed or assumed.
 
 1. **Production hosting** - not deployed anywhere yet.
    `shopify.app.toml`'s `application_url`/`redirect_urls` are still the
-   `https://example.com` placeholder. `fly.toml` and a full step-by-step
-   guide (`FLY_DEPLOY.md`) are prepared for Fly.io, but the actual
-   account, payment method, and `fly deploy` need to be run by whoever
-   owns that decision - this needs a real account and a card, so it's a
-   business decision, not a dev task.
-   *(Render and Google Cloud Run are also viable - `FLY_DEPLOY.md`
-   explains why Fly.io was chosen: this app runs a background inventory
-   poller that must never be allowed to sleep, which rules out those
-   platforms' free tiers.)*
+   `https://example.com` placeholder. Plan is to deploy to the company's
+   existing AWS server (see `AWS_DEPLOY.md`) rather than a third-party
+   platform, since it's already provisioned and avoids a new recurring
+   cost. Whoever has SSH/sudo access to that server and can point a
+   domain at it needs to run through that guide.
+   *(Whatever server this ends up on, one constraint doesn't change:
+   this app runs a background inventory poller that must never be
+   allowed to sleep - so it needs to be a persistent, always-on process,
+   not anything that scales to zero when idle.)*
 
 2. **Billing model** - free vs. paid app, still undecided. A paid app
    requires integrating Shopify's Billing API before submission. This is
