@@ -35,3 +35,4 @@ docker-compose.yml
 
 # Odoo bytecode cache from local module testing
 odoo_module/**/__pycache__/
+.vercel
