@@ -11,12 +11,12 @@ sync log to make those calls fast and traceable.
 ## Install
 
 1. Add this directory's parent to your Odoo `addons_path`, e.g. in
-   `odoo19/odoo.conf`:
+   `odoo.conf`:
    ```
-   Addons_path = /home/cybrosys/odoo19/addons,/home/cybrosys/odoo19/19.0,/home/cybrosys/shopify-development/odoo-connector/odoo_module
+   addons_path = /path/to/your/odoo/addons,/path/to/odoo-connector/odoo_module
    ```
 2. Restart Odoo, then in Apps (with developer mode / Update Apps List)
-   install **Shopify Connector** on the `shopify_odoo` database.
+   install **Shopify Connector** on your database.
 
 ## Create the technical user the Shopify app authenticates as
 
@@ -56,7 +56,7 @@ so the boundary holds even if a future change drops a stray `sudo()`.
 
 | Call (via `/json/2/<model>/<method>`) | Purpose |
 | --- | --- |
-| `product.template.shopify_sync_product(vals)` | Upsert one product; matches by `shopify_id`, falling back to SKU. |
+| `product.template.shopify_sync_product(vals)` | Upsert one product and its **entire** variant list (not just one); matches by `shopify_id`, falling back to SKU. |
 | `product.template.shopify_archive_product(shopify_shop, shopify_id)` | Archive on Shopify `products/delete`. |
 | `res.partner.shopify_sync_customer(vals)` | Upsert one contact; matches by `shopify_id`, falling back to email. |
 | `res.partner.shopify_archive_customer(shopify_shop, shopify_id)` | Archive on Shopify `customers/delete`. |
@@ -95,14 +95,18 @@ sale) but are **not** auto-invoiced/paid - the collected amount no longer
 matches the order total, and correct partial-payment/credit-note
 handling is a distinct feature. Invoice those manually for now.
 
+## Inventory: Odoo is authoritative, the app pulls on a schedule
+
+Stock does **not** flow Shopify → Odoo. The app polls
+`shopify_stock_snapshot` on a timer and pushes whatever it returns to
+Shopify - Odoo's own on-hand quantity always wins. This needs no
+outbound secret/URL stored in Odoo and no retry logic on this side; it
+also means a warehouse's `shopify_location_id` (see
+`stock.warehouse`'s field help) must be set before that warehouse's
+stock is reported at all.
+
 ## What's intentionally not in v1
 
-- **Odoo → Shopify push.** Inventory and fulfillment are meant to be
-  Odoo-authoritative (see the connector's own architecture guide), but
-  right now the app only reads Shopify → Odoo; `shopify_stock_snapshot`
-  above exists for the app to pull from on a schedule if/when that side
-  is built, rather than Odoo pushing to it. A pull needs no outbound
-  secret/URL stored in Odoo and no retry logic on the Odoo side.
 - **Multi-company shop scoping enforcement.** `res.company.shopify_shop_domain`
   is reference-only for now; the sync methods trust whatever
   `shopify_shop` the caller sends rather than binding it to `env.company`.
