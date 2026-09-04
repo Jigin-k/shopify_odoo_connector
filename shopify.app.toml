@@ -56,5 +56,4 @@ api_version = "2026-10"
 redirect_urls = [ "https://shopifyodooconnector.vercel.app/auth/callback" ]
 
 [build]
-include_config_on_deploy = true
 automatically_update_urls_on_dev = true
