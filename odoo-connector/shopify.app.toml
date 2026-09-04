@@ -1,0 +1,60 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "d5526e98fe0f1ed7e76862d1a8e1e249"
+application_url = "https://example.com"
+embedded = true
+name = "odoo_connector"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products,read_customers,read_orders,read_inventory,write_inventory,read_locations,read_markets_home,write_metaobjects,write_metaobject_definitions"
+
+[webhooks]
+api_version = "2026-10"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = [ "app/uninstalled" ]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/scopes_update"
+  topics = [ "app/scopes_update" ]
+
+  # Mandatory Shopify App Store compliance webhooks - required on every
+  # public app regardless of what data it stores. These three use the
+  # special `compliance_topics` key, not `topics`. See the handlers in
+  # app/routes/webhooks.customers.*.tsx and webhooks.shop.redact.tsx.
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "customers/data_request" ]
+  uri = "/webhooks/customers/data_request"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "customers/redact" ]
+  uri = "/webhooks/customers/redact"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "shop/redact" ]
+  uri = "/webhooks/shop/redact"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/sync"
+  topics = [
+    "products/create",
+    "products/update",
+    "products/delete",
+    "customers/create",
+    "customers/update",
+    "customers/delete",
+    "orders/create",
+    "orders/updated",
+    "orders/paid",
+    "orders/cancelled",
+    "refunds/create"
+  ]
+
+[auth]
+redirect_urls = [ "https://example.com/api/auth" ]
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = true
