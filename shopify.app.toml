@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "d5526e98fe0f1ed7e76862d1a8e1e249"
-application_url = "https://example.com"
+application_url = "https://shopifyodooconnector.vercel.app"
 embedded = true
 name = "odoo_connector"
 
@@ -53,7 +53,7 @@ api_version = "2026-10"
   ]
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [ "https://shopifyodooconnector.vercel.app/auth/callback" ]
 
 [build]
 include_config_on_deploy = true
